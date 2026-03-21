@@ -6,27 +6,22 @@ return [
 	| WHMCS URL
 	|--------------------------------------------------------------------------
 	|
-	| Main URL to your WHMCS
+	| Main URL to your WHMCS installation.
 	|
 	*/
-	'url'             => env('WHMCS_URL', 'http://localhost/whmcs'),
+	'url' => env('WHMCS_URL', 'https://localhost/whmcs'),
 
 	/*
 	|--------------------------------------------------------------------------
-	| API Credentials
+	| API Authentication
 	|--------------------------------------------------------------------------
 	|
-	| Prior to WHMCS verison 7.2, authentication was validated based on admin
-	| login credentials, and not API Authentication Credentials. This method of
-	| authentication is still supported for backwards compatibility but may be
-	| deprecated in a future version of WHMCS.
-	|
-	| Supported auth types': "api", "password"
+	| Supported types: "api" (recommended), "password" (deprecated by WHMCS).
 	|
 	| @see https://developers.whmcs.com/api/authentication/
 	|
 	*/
-	'auth'            => [
+	'auth' => [
 		'type' => env('WHMCS_AUTH_TYPE', 'api'),
 
 		'api' => [
@@ -42,69 +37,82 @@ return [
 
 	/*
 	|--------------------------------------------------------------------------
-	| API Credentials
+	| API Access Key
 	|--------------------------------------------------------------------------
 	|
-	| an access key can be configured to allow IP restrictions to be bypassed.
-
-	| It works by defining a secret key/passphrase in the WHMCS configuration.php
-	| file which is then passed into all API calls. To configure it, add a line
-	| as follows to your configuration.php file in the root WHMCS directory.
+	| Optional access key to bypass IP restrictions. Must match the key
+	| defined in your WHMCS configuration.php file.
 	|
 	| @see https://developers.whmcs.com/api/access-control/
 	|
 	*/
-	'api_access_key'  => env('WHMCS_API_ACCESS_KEY', ''),
+	'api_access_key' => env('WHMCS_API_ACCESS_KEY', ''),
 
 	/*
 	|--------------------------------------------------------------------------
-	| AutoAuth
+	| SSL Certificate Verification
 	|--------------------------------------------------------------------------
-	| Auth Key to automatically login the user to WHMCS if already loogged in
-	| to this app. Option "goto" allows you to redirect user to a specific WHMCS
-	| page after successful login.
 	|
-	| @see https://docs.whmcs.com/AutoAuth
+	| Verify the WHMCS server's SSL certificate. Should be true in production.
+	| Set to false only for development with self-signed certificates.
 	|
 	*/
-	'autoauth'        => [
+	'verify_ssl' => env('WHMCS_VERIFY_SSL', true),
+
+	/*
+	|--------------------------------------------------------------------------
+	| Request Timeout
+	|--------------------------------------------------------------------------
+	|
+	| Maximum number of seconds to wait for an API response.
+	|
+	*/
+	'timeout' => env('WHMCS_TIMEOUT', 30),
+
+	/*
+	|--------------------------------------------------------------------------
+	| AutoAuth (Deprecated — removed in WHMCS 8.1)
+	|--------------------------------------------------------------------------
+	|
+	| Legacy AutoAuth settings. For WHMCS 8.1+, use CreateSsoToken via
+	| Whmcs::getSsoUrl() or Whmcs::redirectSso() instead.
+	|
+	| @see https://developers.whmcs.com/api-reference/createssotoken/
+	|
+	*/
+	'autoauth' => [
 		'key'  => env('WHMCS_AUTOAUTH_KEY'),
 		'goto' => 'clientarea.php?action=products',
 	],
 
 	/*
 	|--------------------------------------------------------------------------
-	| Session key to store WHMCS user record
+	| Session Key
 	|--------------------------------------------------------------------------
 	|
-	| After successful validation, we store the retrieved WHMCS user record to
-	| the following session key:
+	| Session key used to store the WHMCS user record after authentication.
 	|
 	*/
-	'session_key'     => env('WHMCS_SESSION_USER_KEY', 'user'),
+	'session_key' => env('WHMCS_SESSION_USER_KEY', 'whmcs_user'),
 
 	/*
 	|--------------------------------------------------------------------------
-	| Convert numbers from strings to floats in results
+	| Convert Decimal Strings to Floats
 	|--------------------------------------------------------------------------
 	|
-	| WHMCS API returns numbers (prices, etc..) as strings in its JSON results.
-	| This option will reformat the response so all the numbers with two decimals
-	| will be converted to floats in the resulting array. If you just need to
-	| display the results, leave the option turned off.
-	|
-	| Default: false
+	| WHMCS returns numbers as strings. Enable this to convert decimal
+	| strings to floats in API responses.
 	|
 	*/
-	'use_floats'      => false,
+	'use_floats' => false,
 
 	/*
 	|--------------------------------------------------------------------------
-	| Return the results as associative arrays
+	| Result Format
 	|--------------------------------------------------------------------------
 	|
-	| true: get result as an associative array.
-	| false: get the result as a stdClass object.
+	| true: return results as associative arrays
+	| false: return results as stdClass objects
 	|
 	*/
 	'result_as_array' => true,

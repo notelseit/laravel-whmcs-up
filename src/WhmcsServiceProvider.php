@@ -1,42 +1,30 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Sburina\Whmcs;
 
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\ServiceProvider;
 
 /**
- * Whmcs ServiceProvider.
+ * WHMCS service provider.
+ * Registers the Whmcs singleton, the whmcs auth driver, and publishes config.
  */
 class WhmcsServiceProvider extends ServiceProvider
 {
-    /**
-     * Bootstrap the application services.
-     *
-     * @return void
-     */
-    public function boot()
+    public function boot(): void
     {
-        if ($this->isLaravel()) {
-            $source = dirname(__DIR__).'/config/whmcs.php';
-            $this->publishes([$source => config_path('whmcs.php')]);
-            $this->mergeConfigFrom($source, 'whmcs');
-        }
+        $source = dirname(__DIR__) . '/config/whmcs.php';
+        $this->publishes([$source => config_path('whmcs.php')]);
+        $this->mergeConfigFrom($source, 'whmcs');
+
+        Auth::provider('whmcs', function () {
+            return new UserProvider();
+        });
     }
 
-    /**
-     * Register the service provider.
-     *
-     * @return void
-     */
-    public function register()
-    {
-        $this->registerWhmcs();
-    }
-
-    /**
-     * register Whmcs.
-     */
-    public function registerWhmcs()
+    public function register(): void
     {
         $this->app->singleton('whmcs', function () {
             return new Whmcs();
@@ -45,20 +33,10 @@ class WhmcsServiceProvider extends ServiceProvider
     }
 
     /**
-     * @return array
+     * @return array<string>
      */
-    public function provides()
+    public function provides(): array
     {
-        return [
-            'whmcs',
-        ];
-    }
-
-    /**
-     * @return bool
-     */
-    protected function isLaravel()
-    {
-        return !preg_match('/lumen/i', $this->app->version());
+        return ['whmcs'];
     }
 }

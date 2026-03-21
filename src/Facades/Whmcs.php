@@ -1,17 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Sburina\Whmcs\Facades;
 
 use Illuminate\Support\Facades\Facade;
 
 class Whmcs extends Facade
 {
-    /**
-     * Get the registered name of the component.
-     *
-     * @return string
-     */
-    protected static function getFacadeAccessor()
+    protected static function getFacadeAccessor(): string
     {
         return 'whmcs';
     }

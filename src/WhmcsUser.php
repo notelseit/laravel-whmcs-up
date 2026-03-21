@@ -1,11 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Sburina\Whmcs;
 
 use Illuminate\Auth\GenericUser;
 
 /**
- * Class WhmcsUser
+ * WHMCS user model backed by the WHMCS API.
  *
  * @property-read int $userid
  * @property-read int $id
@@ -24,22 +26,15 @@ use Illuminate\Auth\GenericUser;
  * @property-read string $countrycode
  * @property-read string $country
  * @property-read string $phonenumber
- * @property-read string $password
  * @property-read string $statecode
  * @property-read string $countryname
  * @property-read string $phonecc
  * @property-read string $phonenumberformatted
  * @property-read string $telephoneNumber
  * @property-read int $billingcid
- * @property-read string $notes
  * @property-read bool $twofaenabled
  * @property-read int $currency
  * @property-read string $defaultgateway
- * @property-read string $cctype
- * @property-read string $cclastfour
- * @property-read string $gatewayid
- * @property-read int $securityqid
- * @property-read string $securityqans
  * @property-read int $groupid
  * @property-read string $status
  * @property-read string $credit
@@ -56,27 +51,22 @@ use Illuminate\Auth\GenericUser;
  * @property-read bool $isOptedInToMarketingEmails
  * @property-read string $lastlogin
  * @property-read string $currency_code
- *
  * @property-read string|null $remember_token
  */
 class WhmcsUser extends GenericUser
 {
     /**
-     * Get the model attributes
-     *
-     * @return array
+     * Get the model attributes.
      */
-    public function getAttributes()
+    public function getAttributes(): array
     {
         return $this->attributes;
     }
 
     /**
      * Get the non-existent "remember me" token value.
-     *
-     * @return null
      */
-    public function getRememberToken()
+    public function getRememberToken(): ?string
     {
         return null;
     }

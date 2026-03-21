@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Sburina\Whmcs;
 
 use Illuminate\Support\Arr;
@@ -8,109 +10,102 @@ use Illuminate\Contracts\Auth\UserProvider as BaseProvider;
 
 class UserProvider implements BaseProvider
 {
-    /**
-     * @var \Sburina\Whmcs\Whmcs
-     */
-    protected $client;
+    protected Whmcs $client;
 
     public function __construct()
     {
         $this->client = app('whmcs');
     }
 
-
     /**
      * Retrieve a user by their unique identifier.
-     *
-     * @param  mixed  $identifier
-     *
-     * @return WhmcsUser|null
      */
-    public function retrieveById($identifier)
+    public function retrieveById(mixed $identifier): ?WhmcsUser
     {
         $userAttributes = [];
         if (session()->has(config('whmcs.session_key'))) {
             $userAttributes = session()->get(config('whmcs.session_key'));
         } else {
-            $res = (array) $this->client->sbGetClientsDetails(null, $identifier);
+            $res = (array) $this->client->sbGetClientsDetails(null, (int) $identifier);
             if (Arr::has($res, 'result') && $res['result'] === 'success') {
-                $userAttributes = (array) $res['client'];
+                $userAttributes = (array) ($res['client'] ?? []);
             }
         }
 
-        return (sizeof($userAttributes) > 0) ? new WhmcsUser($userAttributes) : null;
+        return !empty($userAttributes) ? new WhmcsUser($userAttributes) : null;
     }
 
     /**
      * Retrieve a user by their unique identifier and "remember me" token.
-     *
-     * @param  mixed  $identifier
-     * @param  string  $token
-     *
-     * @return null
      */
-    public function retrieveByToken($identifier, $token)
+    public function retrieveByToken(mixed $identifier, string $token): ?Authenticatable
     {
         return null;
     }
 
     /**
      * Update the "remember me" token for the given user in storage.
-     *
-     * @param  Authenticatable  $user
-     * @param  string  $token
-     *
-     * @return void
      */
-    public function updateRememberToken(Authenticatable $user, $token)
+    public function updateRememberToken(Authenticatable $user, string $token): void
     {
         //
     }
 
     /**
      * Retrieve a user by the given credentials.
-     *
-     * @param  array  $credentials
-     *
-     * @return WhmcsUser|null
      */
-    public function retrieveByCredentials(array $credentials)
+    public function retrieveByCredentials(array $credentials): ?WhmcsUser
     {
+        if (!isset($credentials['email'])) {
+            return null;
+        }
+
         $userAttributes = [];
         if (session()->has(config('whmcs.session_key'))) {
             $userAttributes = session()->get(config('whmcs.session_key'));
         } else {
             $res = (array) $this->client->sbGetClientsDetails($credentials['email']);
             if (Arr::has($res, 'result') && $res['result'] === 'success') {
-                $userAttributes = (array) $res['client'];
+                $userAttributes = (array) ($res['client'] ?? []);
             }
         }
 
-        return (sizeof($userAttributes) > 0) ? new WhmcsUser($userAttributes) : null;
+        return !empty($userAttributes) ? new WhmcsUser($userAttributes) : null;
     }
 
     /**
      * Validate a user against the given credentials.
-     *
-     * @param  Authenticatable  $user
-     * @param  array  $credentials
-     *
-     * @return bool
      */
-    public function validateCredentials(Authenticatable $user, array $credentials)
+    public function validateCredentials(Authenticatable $user, array $credentials): bool
     {
-        /** @var array $res */
+        if (!isset($credentials['email'], $credentials['password'])) {
+            return false;
+        }
+
         $res = (array) $this->client->sbValidateLogin(
             $credentials['email'],
             $credentials['password']
         );
 
         if (Arr::has($res, 'result') && $res['result'] === 'success') {
-            session()->put(config('whmcs.session_key'), $this->retrieveByCredentials($credentials)->getAttributes());
-
+            $retrieved = $this->retrieveByCredentials($credentials);
+            if ($retrieved) {
+                session()->put(config('whmcs.session_key'), $retrieved->getAttributes());
+            }
             return true;
         }
 
         return false;
+    }
+
+    /**
+     * Rehash the user's password if required.
+     * No-op: WHMCS manages its own password hashing externally.
+     *
+     * Required by Laravel 11+ UserProvider contract.
+     */
+    public function rehashPasswordIfRequired(Authenticatable $user, #[\SensitiveParameter] array $credentials, bool $force = false): void
+    {
+        // WHMCS manages password hashing; nothing to do here.
     }
 }

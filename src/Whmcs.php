@@ -1,56 +1,37 @@
 <?php
 
-namespace Sburina\Whmcs;
+declare(strict_types=1);
 
-use ReflectionClass;
+namespace Sburina\Whmcs;
 
 class Whmcs
 {
     /**
-     * @var ReflectionClass
-     */
-    protected $reflector;
-
-    /**
-     * Whmcs constructor.
-     *
-     * @throws \ReflectionException
-     */
-    public function __construct()
-    {
-        $this->reflector = new ReflectionClass(__CLASS__);
-    }
-
-    /**
-     * Magic call to any other WHMCS API methods available.
+     * Magic call to any WHMCS API method.
      *
      * @see https://developers.whmcs.com/api/api-index/
-     *
-     * @param $name
-     * @param $args
-     *
-     * @return array|null
      */
-    public function __call($name, $args)
+    public function __call(string $name, array $args): array|object|null
     {
-        $params           = $args[0];
+        $params = $args[0] ?? [];
         $params['action'] = $name;
 
-        return (new Client)->post($params);
+        return (new Client())->post($params);
     }
 
     /**
      * Retrieve configured products matching provided criteria.
      *
-     * @param  int|null  $pid  Obtain a specific product id configuration. Can be a list of ids comma separated
-     * @param  int|null  $gid  Retrieve products in a specific group id
-     * @param  string|null  $module  Retrieve products utilising a specific module
-     *
-     * @return array
+     * @param  int|string|null  $pid  Product id or comma-separated list of ids
+     * @param  int|null         $gid  Product group id
+     * @param  string|null      $module  Server module name
      */
-    public function sbGetProducts($pid = null, $gid = null, $module = null)
-    {
-        return (new Client)->post([
+    public function sbGetProducts(
+        int|string|null $pid = null,
+        ?int $gid = null,
+        ?string $module = null,
+    ): array|object {
+        return (new Client())->post([
             'action' => 'getProducts',
             'pid'    => $pid,
             'gid'    => $gid,
@@ -59,39 +40,44 @@ class Whmcs
     }
 
     /**
-     * @param  int|null  $limitstart  The offset for the returned log data (default: 0)
-     * @param  int|null  $limitnum  The number of records to return (default: 25)
-     * @param  string  $sorting  The direction to sort the results. ASC or DESC. Default: ASC
-     * @param  string|null  $search  The search term to look for at the start of email, firstname,
-     *                                  lastname, fullname or companyname
+     * Retrieve a list of clients.
      *
-     * @return array
+     * @param  int|null     $limitstart  Offset for returned data (default: 0)
+     * @param  int|null     $limitnum    Number of records to return (default: 25)
+     * @param  string|null  $sorting     Sort direction: ASC or DESC
+     * @param  string|null  $search      Search term for email, name, or company
+     * @param  string|null  $orderby     Field to sort by (id, firstname, lastname, companyname, email, groupid, datecreated, status)
+     * @param  string|null  $status      Filter by status (Active, Inactive, Closed)
      */
-    public function sbGetClients($limitstart = null, $limitnum = null, $sorting = null, $search = null)
-    {
-        return (new Client)->post([
+    public function sbGetClients(
+        ?int $limitstart = null,
+        ?int $limitnum = null,
+        ?string $sorting = null,
+        ?string $search = null,
+        ?string $orderby = null,
+        ?string $status = null,
+    ): array|object {
+        return (new Client())->post([
             'action'     => 'getClients',
             'limitstart' => $limitstart,
             'limitnum'   => $limitnum,
             'sorting'    => $sorting,
             'search'     => $search,
+            'orderby'    => $orderby,
+            'status'     => $status,
         ]);
     }
 
     /**
-     * Obtain the Clients Details for a specific client.
-     *
-     * Either email or clientid is required!
-     *
-     * @param  string|null  $email
-     * @param  int|null  $clientid
-     * @param  bool  $stats
-     *
-     * @return array
+     * Obtain the client details for a specific client.
+     * Either email or clientid is required.
      */
-    public function sbGetClientsDetails($email = null, $clientid = null, $stats = false)
-    {
-        return (new Client)->post([
+    public function sbGetClientsDetails(
+        ?string $email = null,
+        ?int $clientid = null,
+        bool $stats = false,
+    ): array|object {
+        return (new Client())->post([
             'action'   => 'getClientsDetails',
             'email'    => $email,
             'clientid' => $clientid,
@@ -102,22 +88,15 @@ class Whmcs
     /**
      * Validate client login credentials.
      *
-     * @param  string  $email  Client or Sub-Account Email Address
+     * Note: WHMCS has flagged ValidateLogin for future deprecation.
+     * Consider using CreateSsoToken for remote login functionality.
+     *
+     * @param  string  $email      Client or sub-account email address
      * @param  string  $password2  Password to validate
-     *
-     * Response Parameters:
-     * Parameter        Type    Description
-     * result           string  The result of the operation: success or error
-     * userid           int     Client ID
-     * contactid        int     Contact ID if credentials match with a Sub-Account
-     * passwordhash     string  Login session token - returned if Two-Factor Authentication is not required
-     * twoFactorEnabled bool    True if Two-Factor Authentication is enabled for the given account
-     *
-     * @return array
      */
-    public function sbValidateLogin($email, $password2)
+    public function sbValidateLogin(string $email, string $password2): array|object
     {
-        return (new Client)->post([
+        return (new Client())->post([
             'action'    => 'ValidateLogin',
             'email'     => $email,
             'password2' => $password2,
@@ -125,40 +104,141 @@ class Whmcs
     }
 
     /**
-     * Generate the AutoLogin URL for WHMCS
+     * Create an SSO token for a client and return the redirect URL.
+     * Replaces the old AutoAuth mechanism (removed in WHMCS 8.1).
      *
-     * @param  string|null  $goto  URI part to redirect after login
+     * @param  int          $clientId        WHMCS client ID
+     * @param  string|null  $destination     Where to redirect after login (e.g., 'sso:custom_redirect')
+     * @param  string|null  $ssoRedirectPath Relative URL to redirect to in the client area
+     * @param  int|null     $serviceId       Specific service ID to log into
+     * @param  int|null     $domainId        Specific domain ID to log into
+     * @return array|object Response containing 'access_token' and 'redirect_url' on success
      *
-     * @return string
+     * @see https://developers.whmcs.com/api-reference/createssotoken/
      */
-    public function getAutoLoginUrl($goto = null)
-    {
-        if (auth()->check()) {
-            // Define WHMCS URL & AutoAuth Key
-            $whmcsurl  = rtrim(config('whmcs.url'), '/').'/dologin.php';
-            $timestamp = time();
-            $email     = auth()->user()->email;
-            $hash      = sha1($email.$timestamp.config('whmcs.autoauth.key')); # Generate Hash
-            // Generate AutoAuth URL & Redirect
-            $url = $whmcsurl
-                ."?email=$email&timestamp=$timestamp&hash=$hash&goto="
-                .urlencode($goto ?? config('whmcs.autoauth.goto'));
+    public function createSsoToken(
+        int $clientId,
+        ?string $destination = null,
+        ?string $ssoRedirectPath = null,
+        ?int $serviceId = null,
+        ?int $domainId = null,
+    ): array|object {
+        $params = [
+            'action'    => 'CreateSsoToken',
+            'client_id' => $clientId,
+        ];
 
-            return $url;
-        } else {
-            return '/';
+        if ($destination !== null) {
+            $params['destination'] = $destination;
         }
+        if ($ssoRedirectPath !== null) {
+            $params['sso_redirect_path'] = $ssoRedirectPath;
+        }
+        if ($serviceId !== null) {
+            $params['service_id'] = $serviceId;
+        }
+        if ($domainId !== null) {
+            $params['domain_id'] = $domainId;
+        }
+
+        return (new Client())->post($params);
     }
 
     /**
-     * Redirect to AutoLogin URL
+     * Get the SSO redirect URL for the currently authenticated user.
+     * Replacement for the old getAutoLoginUrl() method.
      *
-     * @param  string|null  $goto
-     *
-     * @return \Illuminate\Http\RedirectResponse|\Illuminate\Routing\Redirector
+     * @param  string|null  $redirectPath  Relative URL in the WHMCS client area to redirect to
+     * @return string The redirect URL, or '/' if not authenticated or SSO fails
      */
-    public function redirectAutoLogin($goto = null)
+    public function getSsoUrl(?string $redirectPath = null): string
     {
+        if (!auth()->check()) {
+            return '/';
+        }
+
+        $user = auth()->user();
+        if (!$user) {
+            return '/';
+        }
+
+        $clientId = $user->userid ?? $user->id ?? null;
+        if (!$clientId) {
+            return '/';
+        }
+
+        $destination = $redirectPath ? 'sso:custom_redirect' : null;
+        $result = (array) $this->createSsoToken((int) $clientId, $destination, $redirectPath);
+
+        if (isset($result['result']) && $result['result'] === 'success' && !empty($result['redirect_url'])) {
+            return $result['redirect_url'];
+        }
+
+        return '/';
+    }
+
+    /**
+     * Redirect the authenticated user to WHMCS via SSO.
+     * Replacement for the old redirectAutoLogin() method.
+     *
+     * @param  string|null  $redirectPath  Relative URL in the WHMCS client area
+     */
+    public function redirectSso(?string $redirectPath = null): \Illuminate\Http\RedirectResponse
+    {
+        return redirect($this->getSsoUrl($redirectPath));
+    }
+
+    /**
+     * Generate the AutoAuth login URL for WHMCS.
+     *
+     * @deprecated Use getSsoUrl() instead. AutoAuth was removed in WHMCS 8.1.
+     */
+    public function getAutoLoginUrl(?string $goto = null): string
+    {
+        trigger_error(
+            'getAutoLoginUrl() is deprecated. Use getSsoUrl() instead. AutoAuth was removed in WHMCS 8.1.',
+            E_USER_DEPRECATED
+        );
+
+        if (!auth()->check()) {
+            return '/';
+        }
+
+        $key = config('whmcs.autoauth.key');
+        if (empty($key)) {
+            return '/';
+        }
+
+        $whmcsurl  = rtrim(config('whmcs.url'), '/') . '/dologin.php';
+        $timestamp = time();
+        $user      = auth()->user();
+        $email     = $user?->email;
+
+        if (empty($email)) {
+            return '/';
+        }
+
+        $hash = sha1($email . $timestamp . $key);
+
+        return $whmcsurl
+            . '?email=' . urlencode($email)
+            . '&timestamp=' . $timestamp
+            . '&hash=' . $hash
+            . '&goto=' . urlencode($goto ?? config('whmcs.autoauth.goto'));
+    }
+
+    /**
+     * Redirect to AutoAuth login URL.
+     *
+     * @deprecated Use redirectSso() instead. AutoAuth was removed in WHMCS 8.1.
+     */
+    public function redirectAutoLogin(?string $goto = null): \Illuminate\Http\RedirectResponse
+    {
+        trigger_error(
+            'redirectAutoLogin() is deprecated. Use redirectSso() instead. AutoAuth was removed in WHMCS 8.1.',
+            E_USER_DEPRECATED
+        );
+
         return redirect($this->getAutoLoginUrl($goto));
     }
 }
